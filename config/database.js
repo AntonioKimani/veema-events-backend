@@ -1,40 +1,20 @@
-const mysql = require('mysql2/promise');
+const { Pool } = require('pg');
 const dotenv = require('dotenv');
 
 dotenv.config();
 
-// Use DATABASE_URL if available
-let poolConfig;
-if (process.env.DATABASE_URL) {
-    poolConfig = {
-        uri: process.env.DATABASE_URL,
-        waitForConnections: true,
-        connectionLimit: 10,
-        queueLimit: 0
-    };
-} else {
-    poolConfig = {
-        host: process.env.DB_HOST || 'mysql.railway.internal',
-        port: process.env.DB_PORT || 3306,
-        user: process.env.DB_USER || 'root',
-        password: process.env.DB_PASSWORD,
-        database: process.env.DB_NAME || 'railway',
-        waitForConnections: true,
-        connectionLimit: 10,
-        queueLimit: 0
-    };
-}
-
-const pool = mysql.createPool(poolConfig);
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
 
 const testConnection = async () => {
-    let connection;
+    let client;
     try {
-        console.log('🔌 Attempting MySQL connection...');
-        console.log('Using DATABASE_URL:', process.env.DATABASE_URL ? 'Yes' : 'No');
-        connection = await pool.getConnection();
-        console.log('✅ MySQL connected successfully!');
-        connection.release();
+        console.log('🔌 Attempting PostgreSQL connection...');
+        client = await pool.connect();
+        console.log('✅ PostgreSQL connected successfully!');
+        client.release();
         return true;
     } catch (error) {
         console.error('❌ Database connection failed:', error.message);
