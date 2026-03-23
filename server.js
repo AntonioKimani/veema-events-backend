@@ -8,6 +8,7 @@ const dotenv = require('dotenv');
 const session = require('express-session');
 const passport = require('passport');
 const { testConnection } = require('./config/database');
+
 // Load environment variables
 dotenv.config();
 
@@ -15,6 +16,13 @@ dotenv.config();
 require('./utils/googleAuth');
 
 const app = express();
+
+// ============================================
+// SIMPLE TEST ROUTE - ADDED AT THE VERY TOP
+// ============================================
+app.get('/ping', (req, res) => {
+    res.send('pong');
+});
 
 // ============================================
 // PRODUCTION CORS SETUP
@@ -191,6 +199,7 @@ const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`🌍 Frontend URL: ${FRONTEND_URL}`);
     console.log(`📊 Database: ${process.env.DATABASE_URL ? '✅ Configured' : '❌ Not configured'}`);
     console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+    console.log(`🔗 Ping test: http://localhost:${PORT}/ping`);
     console.log(`=================================\n`);
 });
 
