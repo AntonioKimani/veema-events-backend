@@ -25,14 +25,16 @@ app.get('/ping', (req, res) => {
 });
 
 // ============================================
-// PRODUCTION CORS SETUP
+// PRODUCTION CORS SETUP - FIXED
 // ============================================
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5500';
 const allowedOrigins = [
     FRONTEND_URL,
+    'https://veemaevents.netlify.app',           // ← ADD YOUR NETLIFY URL
     'http://localhost:5500',
     'http://127.0.0.1:5500',
-    'http://localhost:3000'
+    'http://localhost:3000',
+    'https://veema-events-backend.railway.app'    // ← Allow backend itself
 ];
 
 app.use(cors({
@@ -40,11 +42,12 @@ app.use(cors({
         // Allow requests with no origin (like mobile apps or curl)
         if (!origin) return callback(null, true);
         
-        if (allowedOrigins.indexOf(origin) === -1) {
-            const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-            return callback(new Error(msg), false);
+        if (allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            console.log('Blocked origin:', origin);
+            callback(new Error('Not allowed by CORS'));
         }
-        return callback(null, true);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -85,9 +88,9 @@ app.use(session({
     resave: false,
     saveUninitialized: false,
     cookie: { 
-        secure: process.env.NODE_ENV === 'production', // true in production
+        secure: process.env.NODE_ENV === 'production',
         httpOnly: true,
-        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+        maxAge: 24 * 60 * 60 * 1000
     }
 }));
 
@@ -106,12 +109,10 @@ app.use((req, res, next) => {
 // ============================================
 // DATABASE CONNECTION - NON-CRITICAL
 // ============================================
-// Test database connection but don't crash the server if it fails
 testConnection()
     .then(connected => {
         if (!connected) {
             console.warn('⚠️ Server starting but database connection failed!');
-            console.warn('   The server will continue running but database features will not work.');
             console.warn('   Check your DATABASE_URL environment variable.');
         } else {
             console.log('✅ Database connection successful');
@@ -119,7 +120,6 @@ testConnection()
     })
     .catch(err => {
         console.error('❌ Database connection error:', err.message);
-        console.warn('⚠️ Continuing server startup anyway...');
     });
 
 // ============================================
