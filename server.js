@@ -138,6 +138,10 @@ app.get('/health', (req, res) => {
     });
 });
 
+app.get('/test-route', (req, res) => {
+    res.json({ message: 'Direct route works!' });
+});
+
 // Test route
 app.get('/api/test', (req, res) => {
     res.json({ 
