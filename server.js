@@ -156,7 +156,46 @@ app.get('/api/test', (req, res) => {
 // FIREBASE AUTH ROUTES
 // ============================================
 
-// Protected route - requires valid Firebase token
+// Check if user is admin - THIS IS THE MISSING ENDPOINT!
+app.get('/api/auth/is-admin', verifyFirebaseToken, (req, res) => {
+    console.log('Admin check for:', req.user.email);
+    res.json({
+        success: true,
+        isAdmin: req.user.admin === true,
+        user: {
+            email: req.user.email,
+            uid: req.user.uid,
+            admin: req.user.admin === true
+        }
+    });
+});
+
+// Set admin role (protected - only existing admins can set new admins)
+app.post('/api/auth/set-admin', verifyFirebaseToken, async (req, res) => {
+    const { email } = req.body;
+    const requestingUser = req.user;
+    
+    if (!email) {
+        return res.status(400).json({ success: false, message: 'Email required' });
+    }
+    
+    // Check if requesting user is admin
+    if (requestingUser.admin !== true) {
+        return res.status(403).json({ success: false, message: 'Only admins can set admin roles' });
+    }
+    
+    try {
+        const admin = require('firebase-admin');
+        const user = await admin.auth().getUserByEmail(email);
+        await admin.auth().setCustomUserClaims(user.uid, { admin: true, role: 'admin' });
+        res.json({ success: true, message: `Admin role set for ${email}` });
+    } catch (error) {
+        console.error('Error setting admin:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Get current user info (protected)
 app.get('/api/auth/me', verifyFirebaseToken, (req, res) => {
     res.json({
         success: true,
@@ -169,24 +208,12 @@ app.get('/api/auth/me', verifyFirebaseToken, (req, res) => {
     });
 });
 
-// Admin-only route
-app.get('/api/admin/dashboard', verifyFirebaseToken, isAdmin, (req, res) => {
+// Admin-only test route
+app.get('/api/admin/test', verifyFirebaseToken, isAdmin, (req, res) => {
     res.json({
         success: true,
-        message: 'Welcome to the admin dashboard!',
-        admin: req.user
-    });
-});
-
-// Route to get admin status (for frontend)
-app.get('/api/auth/is-admin', verifyFirebaseToken, (req, res) => {
-    res.json({
-        success: true,
-        isAdmin: req.user.admin === true,
-        user: {
-            email: req.user.email,
-            uid: req.user.uid
-        }
+        message: 'Welcome to the admin area!',
+        user: req.user
     });
 });
 
@@ -245,7 +272,7 @@ const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`📊 Database: ${process.env.DATABASE_URL ? '✅ Configured' : '❌ Not configured'}`);
     console.log(`🔗 Health check: http://localhost:${PORT}/health`);
     console.log(`🔗 Ping test: http://localhost:${PORT}/ping`);
-    console.log(`🔗 Firebase Auth: /api/auth/me`);
+    console.log(`🔗 Admin check: /api/auth/is-admin`);
     console.log(`=================================\n`);
 });
 
