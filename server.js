@@ -19,6 +19,19 @@ require('./utils/googleAuth');
 const app = express();
 
 // ============================================
+// TEMPORARY CORS - ALLOW ALL (FOR DEBUGGING)
+// ============================================
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(200);
+    }
+    next();
+});
+
+// ============================================
 // SIMPLE TEST ROUTE - ADDED AT THE VERY TOP
 // ============================================
 app.get('/ping', (req, res) => {
@@ -156,7 +169,7 @@ app.get('/api/test', (req, res) => {
 // FIREBASE AUTH ROUTES
 // ============================================
 
-// Check if user is admin - THIS IS THE MISSING ENDPOINT!
+// Check if user is admin
 app.get('/api/auth/is-admin', verifyFirebaseToken, (req, res) => {
     console.log('Admin check for:', req.user.email);
     res.json({
@@ -170,7 +183,7 @@ app.get('/api/auth/is-admin', verifyFirebaseToken, (req, res) => {
     });
 });
 
-// Set admin role (protected - only existing admins can set new admins)
+// Set admin role
 app.post('/api/auth/set-admin', verifyFirebaseToken, async (req, res) => {
     const { email } = req.body;
     const requestingUser = req.user;
@@ -179,7 +192,6 @@ app.post('/api/auth/set-admin', verifyFirebaseToken, async (req, res) => {
         return res.status(400).json({ success: false, message: 'Email required' });
     }
     
-    // Check if requesting user is admin
     if (requestingUser.admin !== true) {
         return res.status(403).json({ success: false, message: 'Only admins can set admin roles' });
     }
@@ -195,7 +207,7 @@ app.post('/api/auth/set-admin', verifyFirebaseToken, async (req, res) => {
     }
 });
 
-// Get current user info (protected)
+// Get current user info
 app.get('/api/auth/me', verifyFirebaseToken, (req, res) => {
     res.json({
         success: true,
