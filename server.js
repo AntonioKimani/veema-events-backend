@@ -8,6 +8,7 @@ const dotenv = require('dotenv');
 const session = require('express-session');
 const passport = require('passport');
 const { testConnection } = require('./config/database');
+const { verifyFirebaseToken, isAdmin } = require('./middleware/auth');
 
 // Load environment variables
 dotenv.config();
@@ -25,21 +26,20 @@ app.get('/ping', (req, res) => {
 });
 
 // ============================================
-// PRODUCTION CORS SETUP - FIXED
+// PRODUCTION CORS SETUP
 // ============================================
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5500';
 const allowedOrigins = [
     FRONTEND_URL,
-    'https://veemaevents.netlify.app',           // ← ADD YOUR NETLIFY URL
+    'https://veemaevents.netlify.app',
     'http://localhost:5500',
     'http://127.0.0.1:5500',
     'http://localhost:3000',
-    'https://veema-events-backend.railway.app'    // ← Allow backend itself
+    'https://veema-events-backend.railway.app'
 ];
 
 app.use(cors({
     origin: function(origin, callback) {
-        // Allow requests with no origin (like mobile apps or curl)
         if (!origin) return callback(null, true);
         
         if (allowedOrigins.indexOf(origin) !== -1) {
@@ -65,7 +65,7 @@ app.use(compression());
 
 // Rate limiting
 const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
+    windowMs: 15 * 60 * 1000,
     max: process.env.NODE_ENV === 'production' ? 100 : 1000,
     message: 'Too many requests from this IP, please try again later.',
     standardHeaders: true,
@@ -152,7 +152,48 @@ app.get('/api/test', (req, res) => {
     });
 });
 
-// API Routes
+// ============================================
+// FIREBASE AUTH ROUTES
+// ============================================
+
+// Protected route - requires valid Firebase token
+app.get('/api/auth/me', verifyFirebaseToken, (req, res) => {
+    res.json({
+        success: true,
+        user: {
+            uid: req.user.uid,
+            email: req.user.email,
+            name: req.user.name || '',
+            admin: req.user.admin === true
+        }
+    });
+});
+
+// Admin-only route
+app.get('/api/admin/dashboard', verifyFirebaseToken, isAdmin, (req, res) => {
+    res.json({
+        success: true,
+        message: 'Welcome to the admin dashboard!',
+        admin: req.user
+    });
+});
+
+// Route to get admin status (for frontend)
+app.get('/api/auth/is-admin', verifyFirebaseToken, (req, res) => {
+    res.json({
+        success: true,
+        isAdmin: req.user.admin === true,
+        user: {
+            email: req.user.email,
+            uid: req.user.uid
+        }
+    });
+});
+
+// ============================================
+// API ROUTES
+// ============================================
+
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/products', require('./routes/products'));
 app.use('/api/orders', require('./routes/orders'));
@@ -204,6 +245,7 @@ const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`📊 Database: ${process.env.DATABASE_URL ? '✅ Configured' : '❌ Not configured'}`);
     console.log(`🔗 Health check: http://localhost:${PORT}/health`);
     console.log(`🔗 Ping test: http://localhost:${PORT}/ping`);
+    console.log(`🔗 Firebase Auth: /api/auth/me`);
     console.log(`=================================\n`);
 });
 

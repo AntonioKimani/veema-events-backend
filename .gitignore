@@ -22,3 +22,10 @@ Thumbs.db
 # Build outputs
 dist/
 build/
+
+
+# Firebase service account (secret)
+config/firebase-service-account.json
+*.key
+*.pem
+*.p12
